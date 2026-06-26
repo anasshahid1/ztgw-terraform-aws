@@ -155,10 +155,10 @@ if [[ "$oper" == "up" && ! -e ./.zsecrc ]]; then
     done
 
     # Optional login domain override
-    read -r -p "${CYAN}Override login domain? (e.g. zslogin.net) [Enter to auto-derive from cloud]: ${RESET}" login_domain_input
+    read -r -p "${CYAN}Enter custom login domain if your tenant uses a different one than '${cloud}' default (e.g. zslogin.net) [Enter to use cloud default]: ${RESET}" login_domain_input
     if [ -n "$login_domain_input" ]; then
         echo "export TF_VAR_login_domain='$login_domain_input'" >> .zsecrc
-        echo "${GREEN}Using custom login domain: $login_domain_input${RESET}"
+        echo "${GREEN}Using custom login domain: $login_domain_input (instead of cloud default)${RESET}"
     fi
     echo ""
 

@@ -8,6 +8,12 @@ variable "deploy_ztgw" {
   default     = true
 }
 
+variable "deploy_endpoint" {
+  description = "Deploy consumer-side VPC Gateway Load Balancer Endpoint."
+  type        = bool
+  default     = true
+}
+
 # ---------------------------------------------------------------------------
 # Zscaler OneAPI authentication
 # ---------------------------------------------------------------------------
@@ -64,11 +70,17 @@ variable "aws_region_code" {
 variable "availability_zone_ids" {
   description = <<-EOT
     List of AWS Availability Zone IDs for the ZTGW.
+    Leave empty to auto-discover via AWS CLI.
     Use the AZ ID format (e.g. usw2-az1, usw2-az2), not the AZ name.
-    Example: ["usw2-az1", "usw2-az2"]
     EOT
   type        = list(string)
-  default     = ["usw2-az1", "usw2-az2"]
+  default     = []
+}
+
+variable "aws_endpoint_region" {
+  description = "AWS region for the AWS provider and VPC Endpoint."
+  type        = string
+  default     = "us-west-2"
 }
 
 variable "location_name" {
@@ -109,4 +121,38 @@ variable "location_template_id" {
   description = "Zscaler location template ID (defaults to the 'Default Location Template')."
   type        = number
   default     = 164780
+}
+
+# ---------------------------------------------------------------------------
+# Consumer-side VPC Endpoint (brownfield — user provides existing IDs)
+# ---------------------------------------------------------------------------
+
+variable "endpoint_service_name" {
+  description = "Existing ZTGW endpoint service name. Required when deploy_ztgw = false and deploy_endpoint = true."
+  type        = string
+  default     = ""
+}
+
+variable "consumer_vpc_id" {
+  description = "Existing VPC ID for the consumer VPC Endpoint."
+  type        = string
+  default     = ""
+}
+
+variable "consumer_subnet_ids" {
+  description = "Existing subnet IDs for the consumer VPC Endpoint (one per AZ)."
+  type        = list(string)
+  default     = []
+}
+
+variable "consumer_route_cidr" {
+  description = "Destination CIDR block for the VPC Endpoint route entries."
+  type        = string
+  default     = "0.0.0.0/0"
+}
+
+variable "consumer_deploy_key" {
+  description = "Naming prefix for consumer-side resources."
+  type        = string
+  default     = "aws-ztgw"
 }

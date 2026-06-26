@@ -73,9 +73,9 @@ authenticate() {
     local token_resp
     token_resp=$(curl -sk --connect-timeout 10 --max-time 30 -X POST "$TOKEN_URL" \
         -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "grant_type=client_credentials&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}" 2>/dev/null)
+        -d "grant_type=client_credentials&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}" 2>/dev/null || true)
 
-    ACCESS_TOKEN=$(echo "$token_resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null)
+    ACCESS_TOKEN=$(echo "$token_resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || true)
 
     if [ -z "$ACCESS_TOKEN" ]; then
         echo '{"error": "Authentication failed"}' >&2
@@ -113,7 +113,7 @@ force_activation() {
     ACTIVATE_RESPONSE=$(curl -sk --connect-timeout 10 --max-time 60 -X PUT "$ACTIVATE_URL" \
         -H "Authorization: Bearer $ACCESS_TOKEN" \
         -H "Content-Type: application/json" \
-        -d '{}' 2>/dev/null)
+        -d '{}' 2>/dev/null || true)
 
     echo "Force activation response: $ACTIVATE_RESPONSE" >&2
 }
@@ -121,7 +121,7 @@ force_activation() {
 authenticate
 
 echo "Checking for existing AWS ZTGW '${GATEWAY_NAME}'..." >&2
-EXISTING=$(curl -sk --connect-timeout 10 --max-time 30 "$BASE_URL/ztGateway?platform=AWS" -H "$AUTH_HEADER" 2>/dev/null)
+EXISTING=$(curl -sk --connect-timeout 10 --max-time 30 "$BASE_URL/ztGateway?platform=AWS" -H "$AUTH_HEADER" 2>/dev/null || true)
 EXISTING_ID=$(echo "$EXISTING" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
@@ -136,7 +136,7 @@ if [ -n "$EXISTING_ID" ] && [ "$EXISTING_ID" != "" ]; then
     GATEWAY_ID="$EXISTING_ID"
     echo "Found existing AWS ZTGW '${GATEWAY_NAME}' (ID: ${GATEWAY_ID}). Checking health..." >&2
 
-    GW_RESPONSE=$(curl -sk --connect-timeout 10 --max-time 30 "$BASE_URL/ztGateway/$GATEWAY_ID" -H "$AUTH_HEADER" 2>/dev/null)
+    GW_RESPONSE=$(curl -sk --connect-timeout 10 --max-time 30 "$BASE_URL/ztGateway/$GATEWAY_ID" -H "$AUTH_HEADER" 2>/dev/null || true)
     HEALTH_RAW=$(echo "$GW_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('healthStatus','UNKNOWN'))" 2>/dev/null || echo "PARSE_ERROR")
     HEALTH=$(echo "$HEALTH_RAW" | tr '[:lower:]' '[:upper:]')
 
@@ -203,9 +203,9 @@ print(json.dumps(payload))
     CREATE_RESPONSE=$(curl -sk --connect-timeout 10 --max-time 60 -X POST "$BASE_URL/ztGateway" \
         -H "$AUTH_HEADER" \
         -H "Content-Type: application/json" \
-        -d "$CREATE_PAYLOAD" 2>/dev/null)
+        -d "$CREATE_PAYLOAD" 2>/dev/null || true)
 
-    GATEWAY_ID=$(echo "$CREATE_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+    GATEWAY_ID=$(echo "$CREATE_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || true)
 
     if [ -z "$GATEWAY_ID" ]; then
         echo "$CREATE_RESPONSE" >&2
@@ -233,7 +233,7 @@ while true; do
 
     refresh_token_if_needed
 
-    GW_RESPONSE=$(curl -sk --connect-timeout 10 --max-time 30 "$BASE_URL/ztGateway/$GATEWAY_ID" -H "$AUTH_HEADER" 2>/dev/null)
+    GW_RESPONSE=$(curl -sk --connect-timeout 10 --max-time 30 "$BASE_URL/ztGateway/$GATEWAY_ID" -H "$AUTH_HEADER" 2>/dev/null || true)
 
     HEALTH_RAW=$(echo "$GW_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('healthStatus','UNKNOWN'))" 2>/dev/null || echo "PARSE_ERROR")
     HEALTH=$(echo "$HEALTH_RAW" | tr '[:lower:]' '[:upper:]')

@@ -59,9 +59,9 @@ BASE_URL="https://connector.${CLOUD}.net/api/v1"
 echo "${CYAN}Authenticating to Zscaler OneAPI...${RESET}"
 TOKEN_RESPONSE=$(curl -sk --connect-timeout 10 --max-time 30 -X POST "$TOKEN_URL" \
     -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "grant_type=client_credentials&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}" 2>/dev/null)
+    -d "grant_type=client_credentials&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}" 2>/dev/null || true)
 
-ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null)
+ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || true)
 
 if [ -z "$ACCESS_TOKEN" ]; then
     echo "${RED}Authentication failed. Cannot delete AWS ZTGW.${RESET}"
@@ -87,13 +87,13 @@ force_activation() {
     ACTIVATE_RESPONSE=$(curl -sk --connect-timeout 10 --max-time 60 -X PUT "$ACTIVATE_URL" \
         -H "Authorization: Bearer $ACCESS_TOKEN" \
         -H "Content-Type: application/json" \
-        -d '{}' 2>/dev/null)
+        -d '{}' 2>/dev/null || true)
 
     echo "Force activation response: $ACTIVATE_RESPONSE"
 }
 
 echo "${CYAN}Looking up AWS ZTGW '${GATEWAY_NAME}'...${RESET}"
-EXISTING=$(curl -sk --connect-timeout 10 --max-time 30 "$BASE_URL/ztGateway?platform=AWS" -H "$AUTH_HEADER" 2>/dev/null)
+EXISTING=$(curl -sk --connect-timeout 10 --max-time 30 "$BASE_URL/ztGateway?platform=AWS" -H "$AUTH_HEADER" 2>/dev/null || true)
 GATEWAY_ID=$(echo "$EXISTING" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
@@ -113,7 +113,7 @@ echo "${CYAN}Found AWS ZTGW '${GATEWAY_NAME}' (ID: ${GATEWAY_ID}). Deleting...${
 
 DELETE_RESPONSE=$(curl -sk --connect-timeout 10 --max-time 30 -X DELETE "$BASE_URL/ztGateway/$GATEWAY_ID" \
     -H "$AUTH_HEADER" \
-    -w "\n%{http_code}" 2>/dev/null)
+    -w "\n%{http_code}" 2>/dev/null || true)
 
 HTTP_CODE=$(echo "$DELETE_RESPONSE" | tail -1)
 BODY=$(echo "$DELETE_RESPONSE" | sed '$d')

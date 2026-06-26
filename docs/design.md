@@ -102,11 +102,11 @@ The `zsec` script mirrors the same structure as the GCP `ztgw-terraform-gcp` pro
 ## File Structure
 
 ```
-├── main.tf                 # data.external.ztgw, aws_vpc_endpoint, aws_route
+├── main.tf                 # data.local_file.ztgw_output, aws_vpc_endpoint, aws_route
 ├── variables.tf            # 20 variables across 4 categories
 ├── outputs.tf              # 8 outputs (ZTGW + endpoint)
 ├── provider.tf             # AWS provider configuration
-├── versions.tf             # Version constraints (Terraform >= 1.0, AWS >= 5.0)
+├── versions.tf             # Version constraints (Terraform >= 1.0, AWS >= 5.0, local >= 2.0)
 ├── zsec                    # Interactive deployment wrapper
 ├── LICENSE                 # MIT
 └── scripts/
@@ -120,4 +120,4 @@ The `zsec` script mirrors the same structure as the GCP `ztgw-terraform-gcp` pro
 
 The `hashicorp/aws` provider is configured via `provider.tf` with the region set from `var.aws_endpoint_region`. No AWS credentials are hardcoded — the provider uses the standard AWS credential chain (environment variables, `~/.aws/credentials`, IAM role, etc.).
 
-The Zscaler API is accessed through `data.external.ztgw` which calls `deploy_ztgw.sh` as an external program. The script receives input via stdin JSON and returns output via stdout JSON.
+The Zscaler API is called by `zsec` (not Terraform). `zsec` invokes `deploy_ztgw.sh` before `terraform init`, writing the result to `.ztgw-output.json`. Terraform's `data.local_file.ztgw_output` reads this file, avoiding the premature ZTGW creation that `data.external` would trigger during `terraform plan`.

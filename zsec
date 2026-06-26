@@ -374,16 +374,64 @@ if [[ "$TF_VAR_deploy_ztgw" == "false" && -z "$TF_VAR_endpoint_service_name" ]];
 fi
 
 if [[ "$oper" == "up" ]]; then
+
+    # Create ZTGW via Zscaler REST API before running Terraform
+    if [[ "$TF_VAR_deploy_ztgw" == "true" ]]; then
+        SKIP=false
+        if [[ -f .ztgw-output.json ]]; then
+            EXISTING_NAME=$(python3 -c "import json; print(json.load(open('.ztgw-output.json')).get('gateway_name',''))" 2>/dev/null || echo "")
+            if [[ "$EXISTING_NAME" == "$TF_VAR_gateway_name" ]]; then
+                echo "${GREEN}ZTGW '${TF_VAR_gateway_name}' already deployed, skipping.${RESET}"
+                SKIP=true
+            fi
+        fi
+
+        if [[ "$SKIP" == "false" ]]; then
+            echo ""
+            echo "${GREEN}--- Creating AWS ZTGW via Zscaler API ---${RESET}"
+            echo ""
+
+            python3 <<'PYEOF' | bash "$(dirname "$0")/scripts/deploy_ztgw.sh" > .ztgw-output.json
+import os, json
+print(json.dumps({
+    'client_id': os.environ.get('TF_VAR_client_id', ''),
+    'client_secret': os.environ.get('TF_VAR_client_secret', ''),
+    'vanity_domain': os.environ.get('TF_VAR_vanity_domain', ''),
+    'cloud': os.environ.get('TF_VAR_cloud', ''),
+    'login_domain': os.environ.get('TF_VAR_login_domain', ''),
+    'gateway_name': os.environ.get('TF_VAR_gateway_name', ''),
+    'aws_region': os.environ.get('TF_VAR_aws_region', ''),
+    'aws_region_code': os.environ.get('TF_VAR_aws_region_code', ''),
+    'availability_zone_ids': json.loads(os.environ.get('TF_VAR_availability_zone_ids', '[]')),
+    'location_name': os.environ.get('TF_VAR_location_name', ''),
+    'allowed_accounts': json.loads(os.environ.get('TF_VAR_allowed_accounts', '[]')),
+    'account_groups': json.loads(os.environ.get('TF_VAR_account_groups', '[]')),
+}))
+PYEOF
+            DEPLOY_EXIT=$?
+
+            if [ $DEPLOY_EXIT -ne 0 ] || [ ! -s .ztgw-output.json ]; then
+                echo "${RED}ZTGW creation failed. Check the output above.${RESET}"
+                rm -f .ztgw-output.json
+                exit 1
+            fi
+
+            echo ""
+            echo "${GREEN}ZTGW '${TF_VAR_gateway_name}' deployed and healthy.${RESET}"
+            echo ""
+        fi
+    fi
+
     echo "${GREEN}Initializing Terraform...${RESET}"
     ./bin/terraform init
 
     echo ""
     if [[ "$TF_VAR_deploy_endpoint" == "false" ]]; then
-        echo "${GREEN}Deploying AWS ZTGW...${RESET}"
+        echo "${GREEN}Terraform will save ZTGW outputs to state.${RESET}"
     elif [[ "$TF_VAR_deploy_ztgw" == "false" ]]; then
         echo "${GREEN}Deploying VPC Endpoint (using existing endpoint service)...${RESET}"
     else
-        echo "${GREEN}Deploying AWS ZTGW + VPC Endpoint...${RESET}"
+        echo "${GREEN}Deploying VPC Endpoint...${RESET}"
     fi
 
     if [[ "$AUTO_APPROVE" ]]; then
@@ -446,6 +494,7 @@ elif [[ "$oper" == "destroy" ]]; then
     rm -rf .terraform*
     rm -f terraform.tfstate*
     rm -f tfplan
+    rm -f .ztgw-output.json
     rm -rf bin
 
     now=$(date +'%Y-%m-%d-%H_%M_%S')

@@ -1,5 +1,6 @@
 .zsecrc
 .zsecrc-*
+.ztgw-output.json
 bin/
 .terraform/
 *.tfstate

@@ -193,40 +193,18 @@ if [[ "$oper" == "up" && ! -e ./.zsecrc ]]; then
         location_name=${location_name_input:-$location_name_default}
         echo "export TF_VAR_location_name='$location_name'" >> .zsecrc
 
-        while true; do
-            read -r -p "${CYAN}Enter allowed account IDs (comma-separated, e.g. 1591285,462801): ${RESET}" allowed_acct_input
-            if [ -z "$allowed_acct_input" ]; then
-                echo "${RED}At least one allowed AWS account is required.${RESET}"
-            else
-                break
-            fi
-        done
+        echo "${YELLOW}Optional: Configure allowed accounts and groups.${RESET}"
+        echo "${YELLOW}Get the IDs from the Zscaler Admin Portal. Press Enter to skip.${RESET}"
 
-        read -r -p "${CYAN}Enter allowed account names (comma-separated, matching order): ${RESET}" allowed_name_input
+        read -r -p "${CYAN}Enter allowed account IDs (comma-separated, e.g. 1591285,462801) [Enter to skip]: ${RESET}" allowed_acct_input
+        if [ -n "$allowed_acct_input" ]; then
+            allowed_accounts=$(python3 -c "import json; ids=[int(x.strip()) for x in '$allowed_acct_input'.split(',') if x.strip()]; print(json.dumps(ids))" 2>/dev/null)
+            echo "export TF_VAR_allowed_accounts='$allowed_accounts'" >> .zsecrc
+        fi
 
-        allowed_accounts=$(python3 -c "
-import json
-ids = [x.strip() for x in '$allowed_acct_input'.split(',') if x.strip()]
-names = [x.strip() for x in '$allowed_name_input'.split(',') if x.strip()]
-while len(names) < len(ids):
-    names.append('')
-result = [{'id': int(i), 'name': n} for i, n in zip(ids, names)]
-print(json.dumps(result))
-")
-        echo "export TF_VAR_allowed_accounts='$allowed_accounts'" >> .zsecrc
-
-        read -r -p "${CYAN}Enter account group IDs (comma-separated, e.g. 1595528,1173437): ${RESET}" group_acct_input
+        read -r -p "${CYAN}Enter account group IDs (comma-separated, e.g. 1595528,1173437) [Enter to skip]: ${RESET}" group_acct_input
         if [ -n "$group_acct_input" ]; then
-            read -r -p "${CYAN}Enter account group names (comma-separated, matching order): ${RESET}" group_name_input
-            account_groups=$(python3 -c "
-import json
-ids = [x.strip() for x in '$group_acct_input'.split(',') if x.strip()]
-names = [x.strip() for x in '$group_name_input'.split(',') if x.strip()]
-while len(names) < len(ids):
-    names.append('')
-result = [{'id': int(i), 'name': n} for i, n in zip(ids, names)]
-print(json.dumps(result))
-")
+            account_groups=$(python3 -c "import json; ids=[int(x.strip()) for x in '$group_acct_input'.split(',') if x.strip()]; print(json.dumps(ids))" 2>/dev/null)
             echo "export TF_VAR_account_groups='$account_groups'" >> .zsecrc
         fi
         echo ""

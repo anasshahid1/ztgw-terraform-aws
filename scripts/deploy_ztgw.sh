@@ -172,8 +172,8 @@ else
 import json
 
 az_ids = ${AZ_IDS}
-allowed_accounts = ${ALLOWED_ACCOUNTS}
-account_groups = ${ACCOUNT_GROUPS}
+allowed_ids = ${ALLOWED_ACCOUNTS}
+group_ids = ${ACCOUNT_GROUPS}
 location_template_id = ${LOCATION_TEMPLATE_ID}
 
 payload = {
@@ -185,10 +185,12 @@ payload = {
     'provData': {
         'locationName': '${LOCATION_NAME}',
         'locationTemplate': {'id': location_template_id},
-        'allowedAccounts': allowed_accounts,
-        'accountGroups': account_groups,
     }
 }
+if allowed_ids:
+    payload['provData']['allowedAccounts'] = [{'id': i} for i in allowed_ids]
+if group_ids:
+    payload['provData']['accountGroups'] = [{'id': i} for i in group_ids]
 print(json.dumps(payload))
 ")
 

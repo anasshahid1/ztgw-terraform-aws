@@ -91,30 +91,24 @@ variable "location_name" {
 
 variable "allowed_accounts" {
   description = <<-EOT
-    List of allowed AWS accounts for the ZTGW endpoint service.
-    Each entry must have 'id' (integer) and 'name' (string).
-    These are configured in your Zscaler admin portal.
-    Example: [{id = 12345678, name = "My-AWS-Account"}]
+    List of Zscaler account IDs allowed to create VPC Endpoints to this ZTGW.
+    These are configured in the Zscaler Admin Portal — get the IDs from there.
+    Leave empty to skip (can be configured later in the portal).
+    Example: [1591285, 462801]
     EOT
-  type = list(object({
-    id   = number
-    name = string
-  }))
-  default = []
+  type        = list(number)
+  default     = []
 }
 
 variable "account_groups" {
   description = <<-EOT
-    List of Zscaler account groups for the ZTGW.
-    Each entry must have 'id' (integer) and 'name' (string).
-    These are configured in your Zscaler admin portal.
-    Example: [{id = 12345678, name = "My-Group"}]
+    List of Zscaler account group IDs for this ZTGW.
+    These are configured in the Zscaler Admin Portal — get the IDs from there.
+    Leave empty to skip (can be configured later in the portal).
+    Example: [1595528, 1173437]
     EOT
-  type = list(object({
-    id   = number
-    name = string
-  }))
-  default = []
+  type        = list(number)
+  default     = []
 }
 
 variable "location_template_id" {

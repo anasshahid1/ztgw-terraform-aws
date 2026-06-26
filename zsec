@@ -402,10 +402,10 @@ print(json.dumps({
     'gateway_name': os.environ.get('TF_VAR_gateway_name', ''),
     'aws_region': os.environ.get('TF_VAR_aws_region', ''),
     'aws_region_code': os.environ.get('TF_VAR_aws_region_code', ''),
-    'availability_zone_ids': json.loads(os.environ.get('TF_VAR_availability_zone_ids', '[]')),
+    'availability_zone_ids': json.loads(os.environ.get('TF_VAR_availability_zone_ids') or '[]'),
     'location_name': os.environ.get('TF_VAR_location_name', ''),
-    'allowed_accounts': json.loads(os.environ.get('TF_VAR_allowed_accounts', '[]')),
-    'account_groups': json.loads(os.environ.get('TF_VAR_account_groups', '[]')),
+    'allowed_accounts': json.loads(os.environ.get('TF_VAR_allowed_accounts') or '[]'),
+    'account_groups': json.loads(os.environ.get('TF_VAR_account_groups') or '[]'),
 }))
 PYEOF
             DEPLOY_EXIT=$?

@@ -1,0 +1,7 @@
+.zsecrc
+.zsecrc-*
+bin/
+.terraform*
+*.tfstate
+*.tfstate.*
+tfplan

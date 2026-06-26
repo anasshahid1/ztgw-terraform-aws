@@ -1,0 +1,311 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+RED=$(tput setaf 1)
+GREEN=$(tput setaf 2)
+YELLOW=$(tput setaf 3)
+CYAN=$(tput setaf 6)
+RESET=$(tput sgr0)
+
+usage() {
+    echo ""
+    echo "Usage: $0 <up|destroy>"
+    echo ""
+    echo "  up       Deploy AWS ZTGW (interactive guided)"
+    echo "  destroy  Delete AWS ZTGW and clean up"
+    echo ""
+    exit 1
+}
+
+banner() {
+    echo ""
+    echo "${GREEN}============================================================"
+    echo "  Zscaler AWS ZTGW — Interactive Deployment Wrapper"
+    echo "============================================================${RESET}"
+    echo ""
+}
+
+if [ $# -ne 1 ]; then
+    usage
+else
+    case $1 in
+        up|destroy) oper=$1 ;;
+        *) usage ;;
+    esac
+fi
+
+cd "$(dirname "$0")"
+banner
+
+echo "Detecting OS and architecture..."
+archdetect=$(uname -m)
+tversion=1.9.0
+
+if [[ "$OSTYPE" == "linux"* ]]; then
+    os_str=linux; arch=amd64; ostype=Linux
+elif [[ "$OSTYPE" == "darwin"* && "$archdetect" == "arm64" ]]; then
+    os_str=darwin; arch=arm64; ostype=MacOS_arm64
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    os_str=darwin; arch=amd64; ostype=MacOS
+else
+    echo "${RED}Unsupported OS: $OSTYPE${RESET}"; exit 1
+fi
+echo "${GREEN}OS: $ostype | Terraform version: $tversion${RESET}"
+echo ""
+
+dir=bin
+[[ ! -e $dir ]] && mkdir -p $dir
+
+if [[ ! -e ./$dir/terraform ]]; then
+    echo "Downloading Terraform $tversion for ${os_str}_${arch}..."
+    curl -so ./$dir/terraform_${tversion}_${arch}.zip \
+        "https://releases.hashicorp.com/terraform/${tversion}/terraform_${tversion}_${os_str}_${arch}.zip"
+    unzip -qo ./$dir/terraform_${tversion}_${arch}.zip -d ./$dir
+    rm -f ./$dir/terraform_${tversion}_${arch}.zip
+    echo "${GREEN}Terraform $tversion downloaded to ./$dir/${RESET}"
+else
+    echo "${GREEN}Terraform binary already present in ./$dir/${RESET}"
+fi
+echo ""
+
+export PATH="${PWD}/bin:${PATH}"
+
+# -----------------------------------------------------------------------
+# Interactive prompts (first run only)
+# -----------------------------------------------------------------------
+if [[ "$oper" == "up" && ! -e ./.zsecrc ]]; then
+
+    echo "${YELLOW}--- Zscaler OneAPI Authentication ---${RESET}"
+    echo ""
+
+    while [ -z "$client_id" ]; do
+        read -r -p "${CYAN}Enter Zscaler OneAPI Client ID: ${RESET}" client_id
+    done
+    echo "export TF_VAR_client_id='$client_id'" >> .zsecrc
+
+    while [ -z "$client_secret" ]; do
+        read -rs -p "${CYAN}Enter Zscaler OneAPI Client Secret (input hidden): ${RESET}" client_secret
+        echo ""
+    done
+    echo "export TF_VAR_client_secret='$client_secret'" >> .zsecrc
+
+    while [ -z "$vanity_domain" ]; do
+        read -r -p "${CYAN}Enter Zscaler Vanity Domain (e.g. acme): ${RESET}" vanity_domain
+    done
+    echo "export TF_VAR_vanity_domain='$vanity_domain'" >> .zsecrc
+
+    PS3="${CYAN}Select Zscaler cloud: ${RESET}"
+    clouds=("zscaler" "zscalerone" "zscalertwo" "zscalerthree" "zscalerbeta")
+    select cloud_choice in "${clouds[@]}"; do
+        for c in "${clouds[@]}"; do
+            if [[ "$c" == "$cloud_choice" ]]; then
+                cloud=$cloud_choice
+                echo "${GREEN}Cloud: $cloud${RESET}"
+                echo "export TF_VAR_cloud='$cloud'" >> .zsecrc
+                break 2
+            fi
+        done
+        echo "${RED}Invalid selection${RESET}"
+    done
+    echo ""
+
+    echo "${YELLOW}--- AWS ZTGW Configuration ---${RESET}"
+    echo ""
+
+    gateway_name_default="aws-ztgw"
+    read -r -p "${CYAN}Enter ZTGW name [Default=$gateway_name_default]: ${RESET}" gateway_name_input
+    gateway_name=${gateway_name_input:-$gateway_name_default}
+    echo "export TF_VAR_gateway_name='$gateway_name'" >> .zsecrc
+
+    aws_region_default="us-west-2"
+    read -r -p "${CYAN}Enter AWS region [Default=$aws_region_default]: ${RESET}" aws_region_input
+    aws_region=${aws_region_input:-$aws_region_default}
+    echo "export TF_VAR_aws_region='$aws_region'" >> .zsecrc
+
+    # Derive aws_region_code from region
+    aws_region_code=$(echo "$aws_region" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+    echo "export TF_VAR_aws_region_code='$aws_region_code'" >> .zsecrc
+
+    az_ids_default='["usw2-az1","usw2-az2"]'
+    read -r -p "${CYAN}Enter AZ IDs (comma-separated, no spaces) [Default=$az_ids_default]: ${RESET}" az_ids_input
+    if [ -n "$az_ids_input" ]; then
+        az_ids_list=$(echo "$az_ids_input" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | python3 -c "import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))" 2>/dev/null)
+        echo "export TF_VAR_availability_zone_ids='$az_ids_list'" >> .zsecrc
+    else
+        echo "export TF_VAR_availability_zone_ids='$az_ids_default'" >> .zsecrc
+    fi
+
+    location_name_default="${gateway_name}-location"
+    read -r -p "${CYAN}Enter Zscaler location name [Default=$location_name_default]: ${RESET}" location_name_input
+    location_name=${location_name_input:-$location_name_default}
+    echo "export TF_VAR_location_name='$location_name'" >> .zsecrc
+
+    while true; do
+        read -r -p "${CYAN}Enter allowed account IDs (comma-separated, e.g. 1591285,462801): ${RESET}" allowed_acct_input
+        if [ -z "$allowed_acct_input" ]; then
+            echo "${RED}At least one allowed AWS account is required.${RESET}"
+        else
+            break
+        fi
+    done
+
+    read -r -p "${CYAN}Enter allowed account names (comma-separated, matching order): ${RESET}" allowed_name_input
+
+    allowed_accounts=$(python3 -c "
+import json
+ids = [x.strip() for x in '$allowed_acct_input'.split(',') if x.strip()]
+names = [x.strip() for x in '$allowed_name_input'.split(',') if x.strip()]
+# Pad names with empty strings if fewer than IDs
+while len(names) < len(ids):
+    names.append('')
+result = [{'id': int(i), 'name': n} for i, n in zip(ids, names)]
+print(json.dumps(result))
+")
+    echo "export TF_VAR_allowed_accounts='$allowed_accounts'" >> .zsecrc
+
+    read -r -p "${CYAN}Enter account group IDs (comma-separated, e.g. 1595528,1173437): ${RESET}" group_acct_input
+    if [ -n "$group_acct_input" ]; then
+        read -r -p "${CYAN}Enter account group names (comma-separated, matching order): ${RESET}" group_name_input
+        account_groups=$(python3 -c "
+import json
+ids = [x.strip() for x in '$group_acct_input'.split(',') if x.strip()]
+names = [x.strip() for x in '$group_name_input'.split(',') if x.strip()]
+while len(names) < len(ids):
+    names.append('')
+result = [{'id': int(i), 'name': n} for i, n in zip(ids, names)]
+print(json.dumps(result))
+")
+        echo "export TF_VAR_account_groups='$account_groups'" >> .zsecrc
+    fi
+
+    if ! grep -Fxq "export PATH=\${PATH}:\${PWD}/bin" .zsecrc 2>/dev/null; then
+        echo 'export PATH=${PATH}:${PWD}/bin' >> .zsecrc
+    fi
+
+    echo ""
+    echo "${GREEN}============================================================"
+    echo "               DEPLOYMENT SUMMARY"
+    echo "============================================================${RESET}"
+    echo ""
+    echo "  Cloud:                ${GREEN}$cloud${RESET}"
+    echo "  Vanity Domain:        ${GREEN}$vanity_domain${RESET}"
+    echo "  Gateway Name:         ${GREEN}$gateway_name${RESET}"
+    echo "  AWS Region:           ${GREEN}$aws_region${RESET}"
+    echo "  Location Name:        ${GREEN}$location_name${RESET}"
+    echo ""
+
+    while true; do
+        read -r -p "${CYAN}Proceed with deployment? (yes/no): ${RESET}" proceed
+        case $proceed in
+            yes|y) break ;;
+            no|n)
+                echo "${YELLOW}Deployment cancelled. Configuration saved in .zsecrc${RESET}"
+                echo "${YELLOW}Re-run './zsec up' to deploy with saved configuration.${RESET}"
+                exit 0 ;;
+            *) echo "${RED}Invalid response. Enter yes or no${RESET}" ;;
+        esac
+    done
+fi
+
+if [[ -e ./.zsecrc ]]; then
+    echo "${GREEN}Loading configuration from .zsecrc...${RESET}"
+    . ./.zsecrc
+else
+    if [[ "$oper" == "destroy" ]]; then
+        latest_archive=$(ls -t .zsecrc-* 2>/dev/null | head -1)
+        if [ -n "$latest_archive" ]; then
+            echo "${YELLOW}.zsecrc not found, but archived config found: ${latest_archive}${RESET}"
+            read -r -p "${CYAN}Use this config for destroy? (yes/no): ${RESET}" use_archive
+            case $use_archive in
+                yes|y)
+                    cp "$latest_archive" .zsecrc
+                    echo "${GREEN}Restored .zsecrc from ${latest_archive}${RESET}"
+                    . ./.zsecrc ;;
+                *)
+                    echo "${RED}Cannot destroy without configuration. Exiting.${RESET}"
+                    exit 1 ;;
+            esac
+        else
+            echo "${RED}.zsecrc not found. Nothing to destroy.${RESET}"
+            exit 1
+        fi
+    fi
+fi
+
+if [ -z "$TF_VAR_client_id" ] || [ -z "$TF_VAR_client_secret" ] || [ -z "$TF_VAR_vanity_domain" ]; then
+    echo "${RED}Zscaler OneAPI credentials are missing. Delete .zsecrc and re-run './zsec up'${RESET}"
+    exit 1
+fi
+
+if [[ "$oper" == "up" ]]; then
+    echo "${GREEN}Initializing Terraform...${RESET}"
+    ./bin/terraform init
+
+    echo ""
+    echo "${GREEN}Deploying AWS ZTGW...${RESET}"
+
+    if [[ "$AUTO_APPROVE" ]]; then
+        ./bin/terraform apply -auto-approve
+    else
+        ./bin/terraform apply
+    fi
+
+    echo ""
+    echo "${GREEN}============================================================"
+    echo "  Deployment complete"
+    echo "============================================================${RESET}"
+    echo ""
+    echo "  Run ${CYAN}./bin/terraform output${RESET} to view all outputs."
+    echo "  Run ${CYAN}./zsec destroy${RESET} to tear down."
+    echo ""
+
+elif [[ "$oper" == "destroy" ]]; then
+    echo "${YELLOW}============================================================"
+    echo "               DESTROY SUMMARY"
+    echo "============================================================${RESET}"
+    echo ""
+    echo "  ${RED}- AWS ZTGW '${TF_VAR_gateway_name}' from Zscaler${RESET}"
+    echo ""
+
+    if [[ ! "$AUTO_APPROVE" ]]; then
+        while true; do
+            read -r -p "${CYAN}Are you sure you want to destroy? (yes/no): ${RESET}" confirm
+            case $confirm in
+                yes|y) break ;;
+                no|n) echo "${GREEN}Destroy cancelled.${RESET}"; exit 0 ;;
+                *) echo "${RED}Enter yes or no${RESET}" ;;
+            esac
+        done
+    fi
+
+    echo "${YELLOW}--- Deleting AWS ZTGW from Zscaler ---${RESET}"
+    bash "$(dirname "$0")/scripts/destroy_ztgw.sh" || true
+    echo ""
+
+    echo "${YELLOW}--- Cleaning up Terraform state ---${RESET}"
+    ./bin/terraform init
+    if [[ "$AUTO_APPROVE" ]]; then
+        ./bin/terraform destroy -auto-approve
+    else
+        ./bin/terraform destroy
+    fi
+
+    echo ""
+    echo "${YELLOW}Cleaning up local state and files...${RESET}"
+    rm -rf .terraform*
+    rm -f terraform.tfstate*
+    rm -f tfplan
+    rm -rf bin
+
+    now=$(date +'%Y-%m-%d-%H_%M_%S')
+    echo "Archiving .zsecrc to .zsecrc-${now}"
+    cp .zsecrc ".zsecrc-${now}"
+    rm -f .zsecrc .zsecrc.bak
+
+    echo ""
+    echo "${GREEN}============================================================"
+    echo "  Destroy complete. All resources and state cleaned up."
+    echo "============================================================${RESET}"
+    echo ""
+fi

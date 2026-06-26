@@ -153,6 +153,13 @@ if [[ "$oper" == "up" && ! -e ./.zsecrc ]]; then
         done
         echo "${RED}Invalid selection${RESET}"
     done
+
+    # Optional login domain override
+    read -r -p "${CYAN}Override login domain? (e.g. zslogin.net) [Enter to auto-derive from cloud]: ${RESET}" login_domain_input
+    if [ -n "$login_domain_input" ]; then
+        echo "export TF_VAR_login_domain='$login_domain_input'" >> .zsecrc
+        echo "${GREEN}Using custom login domain: $login_domain_input${RESET}"
+    fi
     echo ""
 
     # -----------------------------------------------------------------------
@@ -185,6 +192,12 @@ if [[ "$oper" == "up" && ! -e ./.zsecrc ]]; then
             echo "${GREEN}Discovered AZ IDs: $az_ids_default${RESET}"
         else
             echo "${YELLOW}AWS CLI not available. Will use deploy_zgtw.sh auto-discovery.${RESET}"
+        fi
+        if [ -n "$discovered_azs" ] && [ "$discovered_azs" != "[]" ]; then
+            read -r -p "${CYAN}Enter AZ IDs to use (comma-separated) [Enter for all discovered]: ${RESET}" az_selection
+            if [ -n "$az_selection" ]; then
+                az_ids_default=$(python3 -c "import json; ids=[x.strip() for x in '$az_selection'.split(',') if x.strip()]; print(json.dumps(ids))" 2>/dev/null)
+            fi
         fi
         echo "export TF_VAR_availability_zone_ids='$az_ids_default'" >> .zsecrc
 
@@ -293,6 +306,9 @@ ${CYAN}(e.g. com.amazonaws.vpce.us-west-2.vpce-svc-xxxxxxxx): ${RESET}" endpoint
 
     echo "  Cloud:                ${GREEN}$cloud${RESET}"
     echo "  Vanity Domain:        ${GREEN}$vanity_domain${RESET}"
+    if [ -n "$login_domain_input" ]; then
+        echo "  Login Domain:         ${GREEN}$login_domain_input${RESET} (override)"
+    fi
 
     if [[ "$deploy_endpoint" == "true" ]]; then
         echo "  VPC ID:               ${GREEN}$consumer_vpc_id${RESET}"

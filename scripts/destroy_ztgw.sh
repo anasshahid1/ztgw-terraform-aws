@@ -21,6 +21,7 @@ CLIENT_ID="${TF_VAR_client_id}"
 CLIENT_SECRET="${TF_VAR_client_secret}"
 VANITY_DOMAIN="${TF_VAR_vanity_domain}"
 CLOUD="${TF_VAR_cloud}"
+LOGIN_DOMAIN_OVERRIDE="${TF_VAR_login_domain}"
 GATEWAY_NAME="${TF_VAR_gateway_name}"
 
 if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ] || [ -z "$VANITY_DOMAIN" ]; then
@@ -45,6 +46,11 @@ elif [ "$CLOUD" = "zscalertwo" ]; then
     LOGIN_DOMAIN="zslogintwo.net"
 else
     LOGIN_DOMAIN="zslogin.net"
+fi
+
+if [ -n "$LOGIN_DOMAIN_OVERRIDE" ]; then
+    LOGIN_DOMAIN="$LOGIN_DOMAIN_OVERRIDE"
+    echo "${YELLOW}Using custom login domain: ${LOGIN_DOMAIN}${RESET}"
 fi
 
 TOKEN_URL="https://${VANITY_DOMAIN}.${LOGIN_DOMAIN}/oauth2/v1/token"

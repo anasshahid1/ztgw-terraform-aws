@@ -174,13 +174,29 @@ else
     # -----------------------------------------------------------------------
     echo "Creating AWS ZTGW '${GATEWAY_NAME}' in ${AWS_REGION}..." >&2
 
+    echo "Fetching location template..." >&2
+    TEMPLATES=$(curl -sk --connect-timeout 10 --max-time 30 "$BASE_URL/locationTemplate" -H "$AUTH_HEADER" 2>/dev/null || true)
+    TEMPLATE_ID=$(echo "$TEMPLATES" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+templates = data if isinstance(data, list) else data.get('list', data.get('templates', []))
+for t in templates:
+    print(t['id'])
+    break
+" 2>/dev/null)
+
+    if [ -z "$TEMPLATE_ID" ]; then
+        echo '{"error": "Could not retrieve location template"}' >&2
+        exit 1
+    fi
+
     CREATE_PAYLOAD=$(python3 -c "
 import json
 
 az_ids = ${AZ_IDS}
 allowed_ids = ${ALLOWED_ACCOUNTS}
 group_ids = ${ACCOUNT_GROUPS}
-location_template_id = ${LOCATION_TEMPLATE_ID}
+template_id = ${TEMPLATE_ID}
 
 payload = {
     'name': '${GATEWAY_NAME}',
@@ -190,7 +206,7 @@ payload = {
     'availabilityZoneIds': az_ids,
     'provData': {
         'locationName': '${LOCATION_NAME}',
-        'locationTemplate': {'id': location_template_id},
+        'locationTemplate': {'id': template_id},
     }
 }
 if allowed_ids:

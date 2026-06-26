@@ -15,6 +15,7 @@ data "external" "ztgw" {
     client_secret          = var.client_secret
     vanity_domain          = var.vanity_domain
     cloud                  = var.cloud
+    login_domain           = var.login_domain
     gateway_name           = var.gateway_name
     aws_region             = var.aws_region
     aws_region_code        = var.aws_region_code

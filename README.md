@@ -92,6 +92,7 @@ Configuration is cached in `.zsecrc`. Re-run `./zsec up` to apply with the same 
 | `client_secret` | `string` (sensitive) | — | Zscaler OneAPI OAuth2 client secret |
 | `vanity_domain` | `string` | — | Zscaler vanity domain (e.g. `acme` → `acme.zslogin.net`) |
 | `cloud` | `string` | `zscalerbeta` | Zscaler cloud: `zscaler`, `zscalerone`, `zscalertwo`, `zscalerthree`, `zscalerbeta` |
+| `login_domain` | `string` | `""` | Override OAuth2 login domain. Auto-derived from cloud if empty. Use `zslogin.net` for tenants that authenticate through the production login but use a different backend cloud (e.g. zs3 tenant at `ashahid.zslogin.net`). |
 
 ### ZTGW
 

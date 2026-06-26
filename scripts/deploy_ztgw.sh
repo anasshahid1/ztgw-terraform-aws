@@ -32,6 +32,20 @@ ALLOWED_ACCOUNTS=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(
 ACCOUNT_GROUPS=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('account_groups','[]'))")
 LOCATION_TEMPLATE_ID=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('location_template_id','164780'))")
 
+# -----------------------------------------------------------------------
+# Auto-discover availability zone IDs if not provided
+# -----------------------------------------------------------------------
+if [ "$AZ_IDS" = "[]" ] || [ -z "$AZ_IDS" ]; then
+    echo "Auto-discovering AZ IDs for region ${AWS_REGION}..." >&2
+    AZ_IDS=$(aws ec2 describe-availability-zones --region "$AWS_REGION" \
+        --query "AvailabilityZones[*].ZoneId" --output json 2>/dev/null || echo "[]")
+    if [ "$AZ_IDS" = "[]" ] || [ -z "$AZ_IDS" ]; then
+        echo "{\"error\": \"Could not discover AZ IDs. Install AWS CLI or set availability_zone_ids variable.\"}" >&2
+        exit 1
+    fi
+    echo "Discovered AZ IDs: $AZ_IDS" >&2
+fi
+
 if [ "$CLOUD" = "zscaler" ]; then
     LOGIN_DOMAIN="zslogin.net"
 elif [ "$CLOUD" = "zscalerbeta" ]; then

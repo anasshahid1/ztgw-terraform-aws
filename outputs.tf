@@ -30,3 +30,27 @@ output "endpoints_count" {
   description = "Number of connected VPC endpoints."
   value       = var.deploy_ztgw ? data.external.ztgw[0].result["endpoints_count"] : null
 }
+
+# ---------------------------------------------------------------------------
+# Consumer-side outputs
+# ---------------------------------------------------------------------------
+
+output "vpc_endpoint_id" {
+  description = "ID of the created VPC Gateway Load Balancer Endpoint."
+  value       = var.deploy_endpoint ? aws_vpc_endpoint.consumer[0].id : null
+}
+
+output "vpc_endpoint_service_name" {
+  description = "Endpoint service name used by the VPC Endpoint."
+  value       = var.deploy_endpoint ? aws_vpc_endpoint.consumer[0].service_name : null
+}
+
+output "vpc_endpoint_state" {
+  description = "State of the VPC Endpoint (e.g. Available, Pending, Failed)."
+  value       = var.deploy_endpoint ? aws_vpc_endpoint.consumer[0].state : null
+}
+
+output "vpc_endpoint_route_table_ids" {
+  description = "Route table IDs with routes pointing to the VPC Endpoint."
+  value       = var.deploy_endpoint ? data.aws_route_table.subnet[*].id : null
+}

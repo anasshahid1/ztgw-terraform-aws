@@ -434,11 +434,7 @@ PYEOF
         echo "${GREEN}Deploying VPC Endpoint...${RESET}"
     fi
 
-    if [[ "$AUTO_APPROVE" ]]; then
-        ./bin/terraform apply -auto-approve
-    else
-        ./bin/terraform apply
-    fi
+    ./bin/terraform apply -auto-approve
 
     echo ""
     echo "${GREEN}============================================================"
@@ -483,11 +479,7 @@ elif [[ "$oper" == "destroy" ]]; then
     # Step 2: Destroy consumer-side AWS resources via Terraform
     echo "${YELLOW}--- Destroying Terraform-managed resources ---${RESET}"
     ./bin/terraform init
-    if [[ "$AUTO_APPROVE" ]]; then
-        ./bin/terraform destroy -auto-approve
-    else
-        ./bin/terraform destroy
-    fi
+    ./bin/terraform destroy -auto-approve
 
     echo ""
     echo "${YELLOW}Cleaning up local state and files...${RESET}"

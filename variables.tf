@@ -121,10 +121,16 @@ variable "account_groups" {
   default     = []
 }
 
-variable "location_template_id" {
-  description = "Zscaler location template ID (defaults to the 'Default Location Template')."
-  type        = number
-  default     = 164780
+variable "additional_aws_accounts" {
+  description = <<-EOT
+    List of AWS account IDs (12-digit) to whitelist for VPC endpoint connections
+    to this ZTGW. These are the AWS account numbers that will be allowed to create
+    Gateway Load Balancer Endpoints to the ZTGW endpoint service.
+    Leave empty to skip (can be configured later in the Zscaler portal).
+    Example: ["123456789012", "987654321098"]
+    EOT
+  type        = list(string)
+  default     = []
 }
 
 # ---------------------------------------------------------------------------

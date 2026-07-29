@@ -141,7 +141,7 @@ if [[ "$oper" == "up" && ! -e ./.zsecrc ]]; then
     echo "export TF_VAR_vanity_domain='$vanity_domain'" >> .zsecrc
 
     PS3="${CYAN}Select Zscaler cloud: ${RESET}"
-    clouds=("zscaler" "zscalerone" "zscaltwo" "zscalerthree" "zscalerbeta")
+    clouds=("zscaler" "zscalerone" "zscalertwo" "zscalerthree" "zscalerbeta")
     select cloud_choice in "${clouds[@]}"; do
         for c in "${clouds[@]}"; do
             if [[ "$c" == "$cloud_choice" ]]; then
@@ -155,7 +155,11 @@ if [[ "$oper" == "up" && ! -e ./.zsecrc ]]; then
     done
 
     # Optional login domain override
-    read -r -p "${CYAN}Enter custom login domain if your tenant uses a different one than '${cloud}' default (e.g. zslogin.net) [Enter to use cloud default]: ${RESET}" login_domain_input
+    echo ""
+    echo "${YELLOW}Note: Some tenants (e.g. zscalerthree) authenticate through the production${RESET}"
+    echo "${YELLOW}login domain (zslogin.net) instead of their cloud-specific domain.${RESET}"
+    echo "${YELLOW}If authentication fails with a DNS error, try 'zslogin.net' as the override.${RESET}"
+    read -r -p "${CYAN}Enter custom login domain (e.g. zslogin.net) [Enter to use '${cloud}' default]: ${RESET}" login_domain_input
     if [ -n "$login_domain_input" ]; then
         echo "export TF_VAR_login_domain='$login_domain_input'" >> .zsecrc
         echo "${GREEN}Using custom login domain: $login_domain_input (instead of cloud default)${RESET}"
@@ -219,6 +223,16 @@ if [[ "$oper" == "up" && ! -e ./.zsecrc ]]; then
         if [ -n "$group_acct_input" ]; then
             account_groups=$(python3 -c "import json; ids=[int(x.strip()) for x in '$group_acct_input'.split(',') if x.strip()]; print(json.dumps(ids))" 2>/dev/null)
             echo "export TF_VAR_account_groups='$account_groups'" >> .zsecrc
+        fi
+
+        echo ""
+        echo "${YELLOW}Optional: Whitelist AWS account IDs for VPC endpoint connections.${RESET}"
+        echo "${YELLOW}These are the 12-digit AWS account numbers allowed to create GWLB Endpoints to this ZTGW.${RESET}"
+
+        read -r -p "${CYAN}Enter AWS Account IDs (comma-separated, e.g. 123456789012,987654321098) [Enter to skip]: ${RESET}" aws_acct_input
+        if [ -n "$aws_acct_input" ]; then
+            additional_aws_accounts=$(python3 -c "import json; ids=[x.strip() for x in '$aws_acct_input'.split(',') if x.strip()]; print(json.dumps(ids))" 2>/dev/null)
+            echo "export TF_VAR_additional_aws_accounts='$additional_aws_accounts'" >> .zsecrc
         fi
         echo ""
     fi
@@ -299,6 +313,9 @@ ${CYAN}(e.g. com.amazonaws.vpce.us-west-2.vpce-svc-xxxxxxxx): ${RESET}" endpoint
         echo "  Gateway Name:         ${GREEN}$gateway_name${RESET}"
         echo "  AWS Region:           ${GREEN}$aws_region${RESET}"
         echo "  Location Name:        ${GREEN}$location_name${RESET}"
+        if [ -n "$aws_acct_input" ]; then
+            echo "  AWS Account IDs:      ${GREEN}$aws_acct_input${RESET}"
+        fi
     fi
     if [[ "$deploy_ztgw" == "false" ]]; then
         echo "  Endpoint Service:     ${GREEN}$endpoint_service_name${RESET}"
@@ -406,6 +423,7 @@ print(json.dumps({
     'location_name': os.environ.get('TF_VAR_location_name', ''),
     'allowed_accounts': json.loads(os.environ.get('TF_VAR_allowed_accounts') or '[]'),
     'account_groups': json.loads(os.environ.get('TF_VAR_account_groups') or '[]'),
+    'additional_aws_accounts': json.loads(os.environ.get('TF_VAR_additional_aws_accounts') or '[]'),
 }))
 PYEOF
             DEPLOY_EXIT=$?

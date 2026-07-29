@@ -8,7 +8,7 @@
 # Input (via stdin JSON from Terraform external data source):
 #   client_id, client_secret, vanity_domain, cloud,
 #   gateway_name, aws_region, aws_region_code, availability_zone_ids,
-#   location_name, allowed_accounts, account_groups, location_template_id
+#   location_name, allowed_accounts, account_groups, additional_aws_accounts
 #
 # Output (JSON to stdout for Terraform):
 #   gateway_id, gateway_name, region, health_status,
@@ -31,7 +31,7 @@ AZ_IDS=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)
 LOCATION_NAME=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['location_name'])")
 ALLOWED_ACCOUNTS=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('allowed_accounts','[]'))")
 ACCOUNT_GROUPS=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('account_groups','[]'))")
-LOCATION_TEMPLATE_ID=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('location_template_id','164780'))")
+ADDITIONAL_AWS_ACCOUNTS=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('additional_aws_accounts','[]'))")
 
 # -----------------------------------------------------------------------
 # Auto-discover availability zone IDs if not provided
@@ -196,6 +196,7 @@ import json
 az_ids = ${AZ_IDS}
 allowed_ids = ${ALLOWED_ACCOUNTS}
 group_ids = ${ACCOUNT_GROUPS}
+additional_aws = ${ADDITIONAL_AWS_ACCOUNTS}
 template_id = ${TEMPLATE_ID}
 
 payload = {
@@ -213,6 +214,8 @@ if allowed_ids:
     payload['provData']['allowedAccounts'] = [{'id': i} for i in allowed_ids]
 if group_ids:
     payload['provData']['accountGroups'] = [{'id': i} for i in group_ids]
+if additional_aws:
+    payload['provData']['additionalAwsAccounts'] = additional_aws
 print(json.dumps(payload))
 ")
 

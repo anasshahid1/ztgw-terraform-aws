@@ -27,14 +27,17 @@ No public documentation exists for the Zscaler AWS ZTGW API. The request schema 
     "locationName": "string",
     "locationTemplate": {"id": 164780},
     "allowedAccounts": [{"id": 12345678}],
-    "accountGroups": [{"id": 87654321}]
+    "accountGroups": [{"id": 87654321}],
+    "additionalAwsAccounts": ["123456789012"]
   }
 }
 ```
 
-### Account and group entities
+### Account, group, and AWS account entities
 
 `allowedAccounts` and `accountGroups` reference Zscaler-internal entities configured in the Zscaler Admin Portal. No public API endpoint was found to list or resolve them. They are both optional — if omitted, the ZTGW is created with empty arrays and can be configured later via the admin portal.
+
+`additionalAwsAccounts` is an array of 12-digit AWS account ID strings. These whitelist specific AWS accounts to create Gateway Load Balancer Endpoints to the ZTGW endpoint service. This field is optional — if omitted, no additional AWS accounts are whitelisted (existing `allowedAccounts` mappings still apply).
 
 ---
 

@@ -105,7 +105,7 @@ Configuration is cached in `.zsecrc`. Re-run `./zsec up` to apply with the same 
 | `location_name` | `string` | `aws-ztgw-location` | Zscaler location name |
 | `allowed_accounts` | `list(number)` | `[]` | Zscaler account IDs for endpoint service (optional) |
 | `account_groups` | `list(number)` | `[]` | Zscaler account group IDs (optional) |
-| `location_template_id` | `number` | `164780` | Location template ID |
+| `additional_aws_accounts` | `list(string)` | `[]` | AWS account IDs (12-digit) to whitelist for VPC endpoint connections (optional) |
 
 ### Consumer VPC Endpoint
 

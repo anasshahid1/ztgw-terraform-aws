@@ -195,8 +195,14 @@ import json
 
 az_ids = ${AZ_IDS}
 allowed_ids = ${ALLOWED_ACCOUNTS}
+if not isinstance(allowed_ids, list):
+    allowed_ids = [allowed_ids] if allowed_ids else []
 group_ids = ${ACCOUNT_GROUPS}
+if not isinstance(group_ids, list):
+    group_ids = [group_ids] if group_ids else []
 additional_aws = ${ADDITIONAL_AWS_ACCOUNTS}
+if not isinstance(additional_aws, list):
+    additional_aws = [str(additional_aws)] if additional_aws else []
 template_id = ${TEMPLATE_ID}
 
 payload = {

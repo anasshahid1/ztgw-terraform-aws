@@ -39,6 +39,7 @@ ADDITIONAL_AWS_ACCOUNTS=$(echo "$INPUT" | python3 -c "import sys,json; print(jso
 if [ "$AZ_IDS" = "[]" ] || [ -z "$AZ_IDS" ]; then
     echo "Auto-discovering AZ IDs for region ${AWS_REGION}..." >&2
     AZ_IDS=$(aws ec2 describe-availability-zones --region "$AWS_REGION" \
+        --filters Name=zone-type,Values=availability-zone \
         --query "AvailabilityZones[*].ZoneId" --output json 2>/dev/null || echo "[]")
     if [ "$AZ_IDS" = "[]" ] || [ -z "$AZ_IDS" ]; then
         echo "{\"error\": \"Could not discover AZ IDs. Install AWS CLI or set availability_zone_ids variable.\"}" >&2

@@ -103,8 +103,8 @@ Configuration is cached in `.zsecrc`. Re-run `./zsec up` to apply with the same 
 | `aws_region_code` | `string` | `US_WEST_2` | AWS region in Zscaler format (uppercase underscored) |
 | `availability_zone_ids` | `list(string)` | `[]` | AZ IDs (auto-discovered via AWS CLI if empty) |
 | `location_name` | `string` | `aws-ztgw-location` | Zscaler location name |
-| `allowed_accounts` | `list(number)` | `[]` | Zscaler account IDs for endpoint service (optional) |
-| `account_groups` | `list(number)` | `[]` | Zscaler account group IDs (optional) |
+| `allowed_accounts` | `list(number)` | `[]` | Advanced: Zscaler-internal account IDs (not prompted by `./zsec up`; set via `TF_VAR_allowed_accounts` if needed) |
+| `account_groups` | `list(number)` | `[]` | Advanced: Zscaler-internal account group IDs (not prompted by `./zsec up`; set via `TF_VAR_account_groups` if needed) |
 | `additional_aws_accounts` | `list(string)` | `[]` | AWS account IDs (12-digit) to whitelist for VPC endpoint connections (optional) |
 
 ### Consumer VPC Endpoint

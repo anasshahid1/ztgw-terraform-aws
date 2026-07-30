@@ -190,6 +190,7 @@ if [[ "$oper" == "up" && ! -e ./.zsecrc ]]; then
         # Try to auto-discover AZ IDs
         az_ids_default='[]'
         discovered_azs=$(aws ec2 describe-availability-zones --region "$aws_region" \
+            --filters Name=zone-type,Values=availability-zone \
             --query "AvailabilityZones[*].ZoneId" --output json 2>/dev/null || echo "")
         if [ -n "$discovered_azs" ] && [ "$discovered_azs" != "[]" ]; then
             az_ids_default="$discovered_azs"
@@ -209,21 +210,6 @@ if [[ "$oper" == "up" && ! -e ./.zsecrc ]]; then
         read -r -p "${CYAN}Enter Zscaler location name [Default=$location_name_default]: ${RESET}" location_name_input
         location_name=${location_name_input:-$location_name_default}
         echo "export TF_VAR_location_name='$location_name'" >> .zsecrc
-
-        echo "${YELLOW}Optional: Configure allowed accounts and groups.${RESET}"
-        echo "${YELLOW}Get the IDs from the Zscaler Admin Portal. Press Enter to skip.${RESET}"
-
-        read -r -p "${CYAN}Enter allowed account IDs (comma-separated, e.g. 1591285,462801) [Enter to skip]: ${RESET}" allowed_acct_input
-        if [ -n "$allowed_acct_input" ]; then
-            allowed_accounts=$(python3 -c "import json; ids=[int(x.strip()) for x in '$allowed_acct_input'.split(',') if x.strip()]; print(json.dumps(ids))" 2>/dev/null)
-            echo "export TF_VAR_allowed_accounts='$allowed_accounts'" >> .zsecrc
-        fi
-
-        read -r -p "${CYAN}Enter account group IDs (comma-separated, e.g. 1595528,1173437) [Enter to skip]: ${RESET}" group_acct_input
-        if [ -n "$group_acct_input" ]; then
-            account_groups=$(python3 -c "import json; ids=[int(x.strip()) for x in '$group_acct_input'.split(',') if x.strip()]; print(json.dumps(ids))" 2>/dev/null)
-            echo "export TF_VAR_account_groups='$account_groups'" >> .zsecrc
-        fi
 
         echo ""
         echo "${YELLOW}Optional: Whitelist AWS account IDs for VPC endpoint connections.${RESET}"
